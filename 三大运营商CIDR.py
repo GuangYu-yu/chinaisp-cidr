@@ -7,16 +7,33 @@ import re
 
 # 函数：合并CIDR
 def merge_cidrs(cidrs):
-    networks = sorted(ipaddress.ip_network(cidr) for cidr in cidrs)
-    merged = []
-    for network in networks:
-        if not merged or not merged[-1].supernet_of(network):
-            merged.append(network)
-        else:
-            while merged and merged[-1].supernet_of(network):
-                network = merged.pop().supernet_of(network)
-            merged.append(network)
-    return [str(net) for net in merged]
+    try:
+        networks = []
+        for cidr in cidrs:
+            try:
+                network = ipaddress.ip_network(cidr, strict=False)
+                networks.append(network)
+            except ValueError as e:
+                print(f"警告：无法解析CIDR {cidr}：{e}")
+        
+        networks.sort()
+        merged = []
+        for network in networks:
+            if not merged:
+                merged.append(network)
+            else:
+                last = merged[-1]
+                if last.supernet_of(network):
+                    continue
+                elif last.overlaps(network):
+                    merged[-1] = ipaddress.ip_network(last.supernet_of(network), strict=False)
+                else:
+                    merged.append(network)
+        return [str(net) for net in merged]
+    except Exception as e:
+        print(f"合并CIDR时发生错误：{e}")
+        print(f"问题CIDR列表：{cidrs}")
+        return cidrs  # 如果合并失败，返回原始列表
 
 # 从搜索页面提取ASN编号
 def get_asns(isp_name):
@@ -43,6 +60,8 @@ def get_asns(isp_name):
 
     if not asns:
         print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。请检查搜索结果页面结构是否发生变化。")
+    else:
+        print(f"为 {isp_name} 找到 {len(asns)} 个ASN")
 
     return asns
 
@@ -98,7 +117,18 @@ def main(isps, cache_dir):
         ipv6_cidrs = []
         
         asns = get_asns(isp)
-        print(f"找到 {len(asns)} 个ASN")
+        # 添加额外的搜索步骤
+        if isp == "China Mobile":
+            asns.extend(get_asns("CMCC"))
+        elif isp == "China Unicom":
+            asns.extend(get_asns("CNC"))
+        elif isp == "China Telecom":
+            asns.extend(get_asns("Chinanet"))
+        
+        # 去除重复的ASN
+        asns = list(set(asns))
+        print(f"总共找到 {len(asns)} 个唯一ASN")
+
         for asn in asns:
             print(f"ASN: {asn}")
             cidrs = get_cidrs(asn, cache_dir)
@@ -131,16 +161,20 @@ def main(isps, cache_dir):
     for isp in isps:
         for ip_version in ['v4', 'v6']:
             file_path = f"{isp.replace(' ', '_')}_{ip_version}.txt"
-            with open(file_path, 'r') as f:
-                cidrs = [line.strip() for line in f if line.strip()]
-            
-            merged_cidrs = merge_cidrs(cidrs)
-            
-            with open(file_path, 'w') as f:
-                for cidr in merged_cidrs:
-                    f.write(f"{cidr}\n")
-            
-            print(f"{isp} {ip_version} CIDR合并完成，合并后数量: {len(merged_cidrs)}")
+            try:
+                with open(file_path, 'r') as f:
+                    cidrs = [line.strip() for line in f if line.strip()]
+                
+                print(f"开始合并 {isp} {ip_version} CIDR，原始数量: {len(cidrs)}")
+                merged_cidrs = merge_cidrs(cidrs)
+                
+                with open(file_path, 'w') as f:
+                    for cidr in merged_cidrs:
+                        f.write(f"{cidr}\n")
+                
+                print(f"{isp} {ip_version} CIDR合并完成，合并后数量: {len(merged_cidrs)}")
+            except Exception as e:
+                print(f"处理 {file_path} 时发生错误：{e}")
 
 # 输入ISP列表和缓存目录
 isps_to_search = ["China Mobile", "China Unicom", "China Telecom"]
