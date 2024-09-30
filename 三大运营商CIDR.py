@@ -53,10 +53,15 @@ def get_asns(isp_name):
                 if country_title == 'China' or 'china' in description:
                     if isp_name == "China Mobile" and any(name in description for name in ['china mobile']):
                         asns.append(asn_link.text)
+                        print(f"找到China Mobile ASN: {asn_link.text}, 描述: {description}")
                     elif isp_name == "China Unicom" and any(name in description for name in ['china unicom', 'cnc', 'cncgroup', 'unicom']):
                         asns.append(asn_link.text)
-                    elif isp_name == "China Telecom" and any(name in description for name in ['ChinaTelecom', 'chinanet', 'China Telecom', 'inter exchange', 'Telecom', 'ct']):
+                        print(f"找到China Unicom ASN: {asn_link.text}, 描述: {description}")
+                    elif isp_name == "China Telecom" and any(name.lower() in description for name in ['chinatelecom', 'chinanet', 'china telecom', 'inter exchange', 'telecom', 'ct']):
                         asns.append(asn_link.text)
+                        print(f"找到China Telecom ASN: {asn_link.text}, 描述: {description}")
+                    else:
+                        print(f"未匹配的ASN: {asn_link.text}, 描述: {description}")
 
     if not asns:
         print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。请检查搜索结果页面结构是否发生变化。")
@@ -127,8 +132,11 @@ def main(isps, cache_dir):
             asns.extend(get_asns("CMCC"))
         elif isp == "China Unicom":
             asns.extend(get_asns("CNC"))
+            asns.extend(get_asns("China Network"))
         elif isp == "China Telecom":
             asns.extend(get_asns("Chinanet"))
+            asns.extend(get_asns("ChinaTelecom"))
+            asns.extend(get_asns("CT"))
         
         # 去除重复的ASN
         asns = list(set(asns))
