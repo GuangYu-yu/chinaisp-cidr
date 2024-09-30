@@ -4,15 +4,27 @@ import os
 import shutil
 import ipaddress
 
-# 函数：合并相邻CIDR
+# 函数：合并CIDR
 def merge_cidrs(cidrs):
-    merged = []
-    for cidr in sorted(cidrs, key=lambda x: ipaddress.ip_network(x).network_address):
-        if not merged or ipaddress.ip_network(cidr).overlaps(ipaddress.ip_network(merged[-1])):
-            merged[-1] = str(ipaddress.ip_network(merged[-1]).supernet())
+    if not cidrs:  # 如果列表为空
+        return []
+
+    # 将CIDR转换为网络对象并排序
+    networks = sorted(ipaddress.ip_network(cidr) for cidr in cidrs)
+    merged = [networks[0]]
+
+    for current in networks[1:]:
+        last = merged[-1]
+        if current.subnet_of(last):
+            continue
+        if last.supernet_of(current):
+            merged[-1] = last.supernet()
+        elif last.overlaps(current):
+            merged[-1] = ipaddress.ip_network(f"{last.network_address}/{last.prefixlen}")
         else:
-            merged.append(cidr)
-    return merged
+            merged.append(current)
+
+    return [str(net) for net in merged]
 
 # 函数：从指定的ASN页面获取CIDR（支持缓存）
 def get_cidrs(asn, cache_dir):
@@ -60,7 +72,7 @@ def clear_cache(cache_dir):
         shutil.rmtree(cache_dir)
     os.makedirs(cache_dir)
 
-# 函数：主流程，遍历ISP，获取ASN和CIDR并保存到两个txt文件
+# 函数：主流程，遍历ISP，获取ASN和CIDR并保存到六个txt文件
 def main(isps, cache_dir):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
@@ -68,45 +80,42 @@ def main(isps, cache_dir):
     for isp in isps:
         ipv4_cidrs = []
         ipv6_cidrs = []
-
+        
         print(f"正在搜索ISP: {isp}")
         asns = get_asns(isp)
         for asn in asns:
             print(f"ASN: {asn}")
             cidrs = get_cidrs(asn, cache_dir)
             
+            # 分别保存到不同的列表
             for cidr in cidrs:
                 if ':' in cidr:  # 如果CIDR中有冒号，则是IPv6
                     ipv6_cidrs.append(cidr)
                 else:  # 否则为IPv4
                     ipv4_cidrs.append(cidr)
 
-            print(f"{len(cidrs)} 个CIDR已保存至列表。")
+            print(f"{len(cidrs)} 个CIDR已保存。")
+        print("-" * 40)
 
-        # 合并CIDR
+        # 合并CIDR并保存到文件
         merged_ipv4 = merge_cidrs(ipv4_cidrs)
         merged_ipv6 = merge_cidrs(ipv6_cidrs)
-
-        # 保存结果到文件
-        ipv4_file_path = f"{isp.replace(' ', '_')}_v4.txt"
-        ipv6_file_path = f"{isp.replace(' ', '_')}_v6.txt"
         
-        with open(ipv4_file_path, mode='w', encoding='utf-8') as ipv4_file:
+        # 保存到对应的文件
+        with open(f"{isp.replace(' ', '_')}_v4.txt", mode='w', encoding='utf-8') as ipv4_file:
             for cidr in merged_ipv4:
                 ipv4_file.write(f"{cidr}\n")
-
-        with open(ipv6_file_path, mode='w', encoding='utf-8') as ipv6_file:
+        
+        with open(f"{isp.replace(' ', '_')}_v6.txt", mode='w', encoding='utf-8') as ipv6_file:
             for cidr in merged_ipv6:
                 ipv6_file.write(f"{cidr}\n")
 
-        print(f"{isp} 的CIDR已保存至文件。")
-    
     # 清空缓存
     clear_cache(cache_dir)
 
 # 输入ISP列表和缓存目录
-isps_to_search = ["China Mobile", "China Unicom", "China Telecom"]  # 需要搜索的ISP
-cache_dir = "cache"  # 缓存目录
+isps_to_search = ["China Mobile", "China Unicom", "China Telecom"]
+cache_dir = "cache"
 
 if __name__ == "__main__":
     main(isps_to_search, cache_dir)
