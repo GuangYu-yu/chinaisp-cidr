@@ -67,32 +67,37 @@ def get_asns(isp_name):
 
 # 从指定的ASN页面获取CIDR（支持缓存）
 def get_cidrs(asn, cache_dir):
-    cache_file = os.path.join(cache_dir, f"{asn}_prefixes.html")
+    cache_file_v4 = os.path.join(cache_dir, f"{asn}_prefixes.html")
+    cache_file_v6 = os.path.join(cache_dir, f"{asn}_prefixes6.html")
     
-    if not os.path.exists(cache_file):
-        print(f"正在下载并缓存ASN {asn} 的prefixes网页...")
-        asn_url = f"https://bgp.he.net/{asn}#_prefixes"
-        response = requests.get(asn_url)
-        with open(cache_file, "w", encoding="utf-8") as file:
-            file.write(response.text)
-    else:
-        print(f"使用缓存的ASN {asn} 的prefixes网页...")
-
-    with open(cache_file, "r", encoding="utf-8") as file:
-        content = file.read()
-
-    soup = BeautifulSoup(content, "html.parser")
     cidrs = []
     
-    for row in soup.find_all('tr'):
-        cidr_link = row.find('a', href=lambda href: href and href.startswith('/net/'))
-        if cidr_link:
-            cidr_text = cidr_link.text
-            if re.match(r'^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$|^[0-9a-fA-F:]+(\/\d{1,3})?$', cidr_text):
-                cidrs.append(cidr_text)
+    for cache_file, url_suffix in [(cache_file_v4, "#_prefixes"), (cache_file_v6, "#_prefixes6")]:
+        if not os.path.exists(cache_file):
+            print(f"正在下载并缓存ASN {asn} 的{url_suffix[1:]}网页...")
+            asn_url = f"https://bgp.he.net/{asn}{url_suffix}"
+            response = requests.get(asn_url)
+            with open(cache_file, "w", encoding="utf-8") as file:
+                file.write(response.text)
+        else:
+            print(f"使用缓存的ASN {asn} 的{url_suffix[1:]}网页...")
+
+        with open(cache_file, "r", encoding="utf-8") as file:
+            content = file.read()
+
+        soup = BeautifulSoup(content, "html.parser")
+        
+        for row in soup.find_all('tr'):
+            cidr_link = row.find('a', href=lambda href: href and href.startswith('/net/'))
+            if cidr_link:
+                cidr_text = cidr_link.text
+                if re.match(r'^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$|^[0-9a-fA-F:]+(\/\d{1,3})?$', cidr_text):
+                    cidrs.append(cidr_text)
 
     if not cidrs:
         print(f"警告：未能从ASN {asn}获取任何CIDR。请检查网页结构是否发生变化。")
+    else:
+        print(f"从ASN {asn}获取了 {len(cidrs)} 个CIDR。")
 
     return cidrs
 
