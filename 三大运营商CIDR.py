@@ -83,6 +83,7 @@ def main():
             all_cidrs_v4.extend(cidrs_v4)
             all_cidrs_v6.extend(cidrs_v6)
         
+        # 在所有CIDR提取完成后再合并
         merged_cidrs_v4 = merge_and_sort_cidrs(all_cidrs_v4)
         merged_cidrs_v6 = merge_and_sort_cidrs(all_cidrs_v6)
 
