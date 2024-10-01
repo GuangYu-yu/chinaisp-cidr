@@ -51,17 +51,8 @@ def get_asns(isp_name):
             if len(td_elements) >= 3:
                 description = td_elements[2].text.lower()
                 if country_title == 'China' or 'china' in description:
-                    if isp_name == "China Mobile" and any(name in description for name in ['china+mobile']):
-                        asns.append(asn_link.text)
-                        print(f"找到China Mobile ASN: {asn_link.text}, 描述: {description}")
-                    elif isp_name == "China Unicom" and any(name in description for name in ['china+unicom', 'cnc', 'cncgroup', 'unicom']):
-                        asns.append(asn_link.text)
-                        print(f"找到China Unicom ASN: {asn_link.text}, 描述: {description}")
-                    elif isp_name == "China Telecom" and any(name in description for name in ['chinatelecom', 'chinanet', 'china+telecom', 'inter+exchange', 'telecom', 'ct']):
-                        asns.append(asn_link.text)
-                        print(f"找到China Telecom ASN: {asn_link.text}, 描述: {description}")
-                    else:
-                        print(f"未匹配的ASN: {asn_link.text}, 描述: {description}")
+                    asns.append(asn_link.text)
+                    print(f"找到{isp_name} ASN: {asn_link.text}, 描述: {description}")
 
     if not asns:
         print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。请检查搜索结果页面结构是否发生变化。")
@@ -126,23 +117,27 @@ def main(isps, cache_dir):
         ipv4_cidrs = []
         ipv6_cidrs = []
         
-        asns = get_asns(isp)
-        
-        # 去除重复的ASN
-        asns = list(set(asns))
-        print(f"总共找到 {len(asns)} 个唯一ASN")
+        # 对每个ISP名称进行搜索
+        for isp_name in isp.split('[')[1].split(']')[0].split(','):
+            isp_name = isp_name.strip()
+            print(f"搜索ISP名称: {isp_name}")
+            asns = get_asns(isp_name)
+            
+            # 去除重复的ASN
+            asns = list(set(asns))
+            print(f"总共找到 {len(asns)} 个唯一ASN")
 
-        for asn in asns:
-            print(f"ASN: {asn}")
-            cidrs = get_cidrs(asn, cache_dir)
-            
-            for cidr in cidrs:
-                if ':' in cidr:  # IPv6
-                    ipv6_cidrs.append(cidr)
-                else:  # IPv4
-                    ipv4_cidrs.append(cidr)
-            
-            print(f"从ASN {asn}获取了 {len(cidrs)} 个CIDR。")
+            for asn in asns:
+                print(f"ASN: {asn}")
+                cidrs = get_cidrs(asn, cache_dir)
+                
+                for cidr in cidrs:
+                    if ':' in cidr:  # IPv6
+                        ipv6_cidrs.append(cidr)
+                    else:  # IPv4
+                        ipv4_cidrs.append(cidr)
+                
+                print(f"从ASN {asn}获取了 {len(cidrs)} 个CIDR。")
         
         # 保存到文件
         with open(ipv4_file_path, mode='w', encoding='utf-8') as ipv4_file:
@@ -180,7 +175,11 @@ def main(isps, cache_dir):
                 print(f"处理 {file_path} 时发生错误：{e}")
 
 # 输入ISP列表和缓存目录
-isps_to_search = ["China Mobile", "China Unicom", "China Telecom"]
+isps_to_search = [
+    "China Mobile [china+mobile, tietong]",
+    "China Unicom [cnc, cncgroup, unicom]",
+    "China Telecom [chinatelecom, chinanet, inter+exchange, china+telecom, ct]"
+]
 cache_dir = "cache"
 
 if __name__ == "__main__":
