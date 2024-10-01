@@ -41,7 +41,7 @@ def get_asns(isp_name):
     for row in soup.find_all('tr'):
         asn_link = row.find('a')
         country_div = row.find('div', class_='flag')
-        if asn_link and 'AS' in asn_link.text and country_div:
+        if asn_link and country_div:
             country_title = country_div.get('title', '')
             if country_title == 'China':
                 asns.append(asn_link.text)
