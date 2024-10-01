@@ -104,7 +104,7 @@ def clear_cache(cache_dir):
         shutil.rmtree(cache_dir)
     os.makedirs(cache_dir)
 
-# 新增函数：排序和合并CIDR
+# 排序和合并CIDR函数
 def sort_and_merge_cidrs(cidrs):
     ipv4_networks = []
     ipv6_networks = []
@@ -120,25 +120,24 @@ def sort_and_merge_cidrs(cidrs):
             print(f"警告：无法解析CIDR {cidr}：{e}")
     
     def merge_networks(networks):
+        if not networks:
+            return []
         sorted_networks = sorted(networks)
-        merged = []
-        for net in sorted_networks:
-            if not merged:
-                merged.append(net)
+        merged = [sorted_networks[0]]
+        for net in sorted_networks[1:]:
+            last = merged[-1]
+            if last.supernet_of(net):
+                continue
+            elif last.overlaps(net) or last.broadcast_address + 1 == net.network_address:
+                merged[-1] = ipaddress.ip_network(last.supernet_of(net), strict=False)
             else:
-                last = merged[-1]
-                if last.supernet_of(net):
-                    continue
-                elif last.overlaps(net) or last.broadcast_address + 1 == net.network_address:
-                    merged[-1] = ipaddress.ip_network(last.supernet_of(net), strict=False)
-                else:
-                    merged.append(net)
+                merged.append(net)
         return merged
     
     merged_ipv4 = merge_networks(ipv4_networks)
     merged_ipv6 = merge_networks(ipv6_networks)
     
-    return [str(net) for net in merged_ipv4 + merged_ipv6]
+    return [str(net) for net in merged_ipv4], [str(net) for net in merged_ipv6]
 
 # 主函数
 def main(isps, cache_dir):
@@ -178,11 +177,11 @@ def main(isps, cache_dir):
         
         # 排序和合并CIDR
         print(f"开始排序和合并 {isp_name} IPv4 CIDR，原始数量: {len(ipv4_cidrs)}")
-        ipv4_cidrs = sort_and_merge_cidrs(ipv4_cidrs)
+        ipv4_cidrs, _ = sort_and_merge_cidrs(ipv4_cidrs)
         print(f"{isp_name} IPv4 CIDR排序和合并完成，合并后数量: {len(ipv4_cidrs)}")
 
         print(f"开始排序和合并 {isp_name} IPv6 CIDR，原始数量: {len(ipv6_cidrs)}")
-        ipv6_cidrs = sort_and_merge_cidrs(ipv6_cidrs)
+        _, ipv6_cidrs = sort_and_merge_cidrs(ipv6_cidrs)
         print(f"{isp_name} IPv6 CIDR排序和合并完成，合并后数量: {len(ipv6_cidrs)}")
 
         # 保存到文件
