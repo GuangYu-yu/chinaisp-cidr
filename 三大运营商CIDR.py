@@ -104,6 +104,28 @@ def clear_cache(cache_dir):
         shutil.rmtree(cache_dir)
     os.makedirs(cache_dir)
 
+# 新增函数：排序和合并CIDR
+def sort_and_merge_cidrs(cidrs):
+    # 将CIDR字符串转换为IP网络对象
+    networks = [ipaddress.ip_network(cidr) for cidr in cidrs]
+    # 排序网络
+    sorted_networks = sorted(networks)
+    # 合并相邻网络
+    merged = []
+    for net in sorted_networks:
+        if not merged:
+            merged.append(net)
+        else:
+            last = merged[-1]
+            if last.supernet_of(net):
+                continue
+            elif last.overlaps(net) or last.broadcast_address + 1 == net.network_address:
+                merged[-1] = ipaddress.ip_network(last.supernet_of(net), strict=False)
+            else:
+                merged.append(net)
+    # 将结果转换回字符串
+    return [str(net) for net in merged]
+
 # 主函数
 def main(isps, cache_dir):
     if not os.path.exists(cache_dir):
@@ -111,17 +133,18 @@ def main(isps, cache_dir):
 
     for isp in isps:
         print(f"正在搜索ISP: {isp}")
-        ipv4_file_path = f"{isp.replace(' ', '_')}_v4.txt"
-        ipv6_file_path = f"{isp.replace(' ', '_')}_v6.txt"
+        isp_name = isp.split('[')[0].strip()
+        ipv4_file_path = f"{isp_name}_v4.txt"
+        ipv6_file_path = f"{isp_name}_v6.txt"
         
         ipv4_cidrs = []
         ipv6_cidrs = []
         
         # 对每个ISP名称进行搜索
-        for isp_name in isp.split('[')[1].split(']')[0].split(','):
-            isp_name = isp_name.strip()
-            print(f"搜索ISP名称: {isp_name}")
-            asns = get_asns(isp_name)
+        for search_term in isp.split('[')[1].split(']')[0].split(','):
+            search_term = search_term.strip()
+            print(f"搜索ISP名称: {search_term}")
+            asns = get_asns(search_term)
             
             # 去除重复的ASN
             asns = list(set(asns))
@@ -139,6 +162,15 @@ def main(isps, cache_dir):
                 
                 print(f"从ASN {asn}获取了 {len(cidrs)} 个CIDR。")
         
+        # 排序和合并CIDR
+        print(f"开始排序和合并 {isp_name} IPv4 CIDR，原始数量: {len(ipv4_cidrs)}")
+        ipv4_cidrs = sort_and_merge_cidrs(ipv4_cidrs)
+        print(f"{isp_name} IPv4 CIDR排序和合并完成，合并后数量: {len(ipv4_cidrs)}")
+
+        print(f"开始排序和合并 {isp_name} IPv6 CIDR，原始数量: {len(ipv6_cidrs)}")
+        ipv6_cidrs = sort_and_merge_cidrs(ipv6_cidrs)
+        print(f"{isp_name} IPv6 CIDR排序和合并完成，合并后数量: {len(ipv6_cidrs)}")
+
         # 保存到文件
         with open(ipv4_file_path, mode='w', encoding='utf-8') as ipv4_file:
             for cidr in ipv4_cidrs:
@@ -148,37 +180,18 @@ def main(isps, cache_dir):
             for cidr in ipv6_cidrs:
                 ipv6_file.write(f"{cidr}\n")
         
-        print(f"{isp} 的中国大陆CIDR已保存。")
+        print(f"{isp_name} 的中国大陆CIDR已保存。")
         print(f"IPv4 CIDR数量: {len(ipv4_cidrs)}")
         print(f"IPv6 CIDR数量: {len(ipv6_cidrs)}")
         print(f"文件保存路径：\nIPv4: {os.path.abspath(ipv4_file_path)}\nIPv6: {os.path.abspath(ipv6_file_path)}")
 
     clear_cache(cache_dir)
 
-    # 对六个文件分别进行CIDR合并
-    for isp in isps:
-        for ip_version in ['v4', 'v6']:
-            file_path = f"{isp.replace(' ', '_')}_{ip_version}.txt"
-            try:
-                with open(file_path, 'r') as f:
-                    cidrs = [line.strip() for line in f if line.strip()]
-                
-                print(f"开始合并 {isp} {ip_version} CIDR，原始数量: {len(cidrs)}")
-                merged_cidrs = merge_cidrs(cidrs)
-                
-                with open(file_path, 'w') as f:
-                    for cidr in merged_cidrs:
-                        f.write(f"{cidr}\n")
-                
-                print(f"{isp} {ip_version} CIDR合并完成，合并后数量: {len(merged_cidrs)}")
-            except Exception as e:
-                print(f"处理 {file_path} 时发生错误：{e}")
-
 # 输入ISP列表和缓存目录
 isps_to_search = [
-    "China Mobile [china+mobile, tietong]",
+    "China Mobile [mobile, tietong]",
     "China Unicom [cnc, cncgroup, unicom]",
-    "China Telecom [chinatelecom, chinanet, inter+exchange, china+telecom, ct]"
+    "China Telecom [chinatelecom, telecom, chinanet, inter+exchange, ct]"
 ]
 cache_dir = "cache"
 
