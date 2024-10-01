@@ -35,43 +35,41 @@ def merge_cidrs(cidrs):
 def get_asns(isp_name):
     search_url = f"https://bgp.he.net/search?search%5Bsearch%5D={isp_name}&commit=Search"
     response = requests.get(search_url)
-    if response.status_code != 200:
-        print(f"请求失败，状态码: {response.status_code}")
-        return []
-
     soup = BeautifulSoup(response.content, "html.parser")
 
     asns = []
     for row in soup.find_all('tr'):
         asn_link = row.find('a')
         country_div = row.find('div', class_='flag')
-        if asn_link and country_div:
+        if asn_link and 'AS' in asn_link.text and country_div:
             country_title = country_div.get('title', '')
             if country_title == 'China':
                 asns.append(asn_link.text)
-                print(f"找到{isp_name} ASN: {asn_link.text}")
-            else:
-                print(f"忽略 ASN: {asn_link.text}，国家标题: {country_title}")
+                print(f"找到{isp_name} ASN: {asn_link.text}, 国家: {country_title}")
 
     if not asns:
         print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。")
     else:
         print(f"为 {isp_name} 找到 {len(asns)} 个ASN")
 
-    return list(set(asns))  # 去重
+    return asns
 
 # 从指定的ASN页面获取CIDR（支持缓存）
 def get_cidrs(asn, cache_dir, temp_ipv4_file, temp_ipv6_file):
     cache_file_v4 = os.path.join(cache_dir, f"{asn}_prefixes.html")
     cache_file_v6 = os.path.join(cache_dir, f"{asn}_prefixes6.html")
-
+    
     for cache_file, url_suffix in [(cache_file_v4, "#_prefixes"), (cache_file_v6, "#_prefixes6")]:
         if not os.path.exists(cache_file):
             print(f"正在下载并缓存ASN {asn} 的{url_suffix[1:]}网页...")
             asn_url = f"https://bgp.he.net/{asn}{url_suffix}"
             response = requests.get(asn_url)
-            with open(cache_file, "w", encoding="utf-8") as file:
-                file.write(response.text)
+            if response.status_code == 200:
+                with open(cache_file, "w", encoding="utf-8") as file:
+                    file.write(response.text)
+            else:
+                print(f"警告：下载ASN {asn} 的网页失败，状态码: {response.status_code}")
+                return
         else:
             print(f"使用缓存的ASN {asn} 的{url_suffix[1:]}网页...")
 
@@ -80,6 +78,7 @@ def get_cidrs(asn, cache_dir, temp_ipv4_file, temp_ipv6_file):
 
         soup = BeautifulSoup(content, "html.parser")
         
+        cidr_count = 0
         for row in soup.find_all('tr'):
             cidr_link = row.find('a', href=lambda href: href and href.startswith('/net/'))
             if cidr_link:
@@ -89,6 +88,12 @@ def get_cidrs(asn, cache_dir, temp_ipv4_file, temp_ipv6_file):
                         temp_ipv6_file.write(f"{cidr_text}\n")
                     else:  # IPv4
                         temp_ipv4_file.write(f"{cidr_text}\n")
+                    cidr_count += 1
+
+    if cidr_count == 0:
+        print(f"警告：未能从ASN {asn}获取任何CIDR。请检查网页结构是否发生变化。")
+    else:
+        print(f"从ASN {asn}获取了 {cidr_count} 个CIDR。")
 
 # 清空缓存目录
 def clear_cache(cache_dir):
