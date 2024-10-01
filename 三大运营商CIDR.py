@@ -51,10 +51,14 @@ def get_cidr(asn):
             cidr_link = row.find('a')
             if cidr_link and 'net' in cidr_link['href']:
                 cidr = cidr_link.text.strip()
-                if ':' in cidr:  # IPv6
-                    cidrs_v6.append(cidr)
-                else:  # IPv4
-                    cidrs_v4.append(cidr)
+                try:
+                    ipaddress.ip_network(cidr)  # 验证CIDR是否有效
+                    if ':' in cidr:  # IPv6
+                        cidrs_v6.append(cidr)
+                    else:  # IPv4
+                        cidrs_v4.append(cidr)
+                except ValueError:
+                    print(f"警告：跳过无效的CIDR: {cidr}")
     
     # 打印发现的CIDR数量
     total_cidrs = len(cidrs_v4) + len(cidrs_v6)
@@ -63,7 +67,12 @@ def get_cidr(asn):
     return cidrs_v4, cidrs_v6
 
 def merge_and_sort_cidrs(cidrs):
-    cidr_set = set(ipaddress.ip_network(cidr) for cidr in cidrs)
+    cidr_set = set()
+    for cidr in cidrs:
+        try:
+            cidr_set.add(ipaddress.ip_network(cidr))
+        except ValueError:
+            print(f"警告：跳过无效的CIDR: {cidr}")
     print(f"开始合并 {len(cidr_set)} CIDR，原始数量: {len(cidrs)}")
     merged = list(ipaddress.collapse_addresses(cidr_set))  # 转换为列表
     print(f"CIDR合并完成，合并后数量: {len(merged)}")
