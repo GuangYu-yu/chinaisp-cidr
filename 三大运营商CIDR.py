@@ -37,33 +37,37 @@ def merge_cidrs(cidrs):
 
 # 从搜索页面提取ASN编号
 def get_asns(isp_info):
-    isp_name, keywords = isp_info.split('[')
+    isp_name, search_keywords = isp_info.split('[')
     isp_name = isp_name.strip()
-    keywords = [k.strip() for k in keywords[:-1].split(',')]
+    search_keywords = [k.strip().lower() for k in search_keywords[:-1].split(',')]
     
     all_asns = []
-    for keyword in [isp_name] + keywords:
+    for keyword in [isp_name] + search_keywords:
         search_url = f"https://bgp.he.net/search?search%5Bsearch%5D={keyword}&commit=Search"
-        response = requests.get(search_url)
-        soup = BeautifulSoup(response.content, "html.parser")
+        try:
+            response = requests.get(search_url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
 
-        for row in soup.find_all('tr'):
-            asn_link = row.find('a')
-            country_div = row.find('div', class_='flag')
-            if asn_link and 'AS' in asn_link.text and country_div:
-                country_title = country_div.get('title', '')
-                td_elements = row.find_all('td')
-                if len(td_elements) >= 3:
-                    description = td_elements[2].text.lower()
-                    if country_title == 'China' in description:
-                        if any(kw.lower() in description for kw in keywords):
-                            all_asns.append(asn_link.text)
-                            print(f"找到{isp_name} ASN: {asn_link.text}, 描述: {description}")
-                        else:
-                            print(f"未匹配的ASN: {asn_link.text}, 描述: {description}")
+            for row in soup.find_all('tr'):
+                asn_link = row.find('a')
+                country_div = row.find('div', class_='flag')
+                if asn_link and 'AS' in asn_link.text and country_div:
+                    country_title = country_div.get('title', '')
+                    td_elements = row.find_all('td')
+                    if len(td_elements) >= 3:
+                        description = td_elements[2].text.lower()
+                        if country_title == 'China' or 'china' in description:
+                            if any(kw in description for kw in search_keywords):
+                                all_asns.append(asn_link.text)
+                                print(f"找到{isp_name} ASN: {asn_link.text}, 描述: {description}")
+                            else:
+                                print(f"未匹配的ASN: {asn_link.text}, 描述: {description}")
+        except Exception as e:
+            print(f"搜索关键词 {keyword} 时发生错误: {e}")
 
     unique_asns = list(set(all_asns))
-    print(f"为 {isp_name} 找到 {len(unique_asns)} 个ASN")
+    print(f"为 {isp_name} 找到 {len(unique_asns)} 个唯一ASN")
     return unique_asns
 
 # 从指定的ASN页面获取CIDR（支持缓存）
