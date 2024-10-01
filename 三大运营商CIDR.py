@@ -106,25 +106,39 @@ def clear_cache(cache_dir):
 
 # 新增函数：排序和合并CIDR
 def sort_and_merge_cidrs(cidrs):
-    # 将CIDR字符串转换为IP网络对象
-    networks = [ipaddress.ip_network(cidr) for cidr in cidrs]
-    # 排序网络
-    sorted_networks = sorted(networks)
-    # 合并相邻网络
-    merged = []
-    for net in sorted_networks:
-        if not merged:
-            merged.append(net)
-        else:
-            last = merged[-1]
-            if last.supernet_of(net):
-                continue
-            elif last.overlaps(net) or last.broadcast_address + 1 == net.network_address:
-                merged[-1] = ipaddress.ip_network(last.supernet_of(net), strict=False)
-            else:
+    ipv4_networks = []
+    ipv6_networks = []
+    
+    for cidr in cidrs:
+        try:
+            network = ipaddress.ip_network(cidr, strict=False)
+            if isinstance(network, ipaddress.IPv4Network):
+                ipv4_networks.append(network)
+            elif isinstance(network, ipaddress.IPv6Network):
+                ipv6_networks.append(network)
+        except ValueError as e:
+            print(f"警告：无法解析CIDR {cidr}：{e}")
+    
+    def merge_networks(networks):
+        sorted_networks = sorted(networks)
+        merged = []
+        for net in sorted_networks:
+            if not merged:
                 merged.append(net)
-    # 将结果转换回字符串
-    return [str(net) for net in merged]
+            else:
+                last = merged[-1]
+                if last.supernet_of(net):
+                    continue
+                elif last.overlaps(net) or last.broadcast_address + 1 == net.network_address:
+                    merged[-1] = ipaddress.ip_network(last.supernet_of(net), strict=False)
+                else:
+                    merged.append(net)
+        return merged
+    
+    merged_ipv4 = merge_networks(ipv4_networks)
+    merged_ipv6 = merge_networks(ipv6_networks)
+    
+    return [str(net) for net in merged_ipv4 + merged_ipv6]
 
 # 主函数
 def main(isps, cache_dir):
