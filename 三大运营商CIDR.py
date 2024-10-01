@@ -35,6 +35,10 @@ def merge_cidrs(cidrs):
 def get_asns(isp_name):
     search_url = f"https://bgp.he.net/search?search%5Bsearch%5D={isp_name}&commit=Search"
     response = requests.get(search_url)
+    if response.status_code != 200:
+        print(f"请求失败，状态码: {response.status_code}")
+        return []
+
     soup = BeautifulSoup(response.content, "html.parser")
 
     asns = []
@@ -46,6 +50,8 @@ def get_asns(isp_name):
             if country_title == 'China':
                 asns.append(asn_link.text)
                 print(f"找到{isp_name} ASN: {asn_link.text}")
+            else:
+                print(f"忽略 ASN: {asn_link.text}，国家标题: {country_title}")
 
     if not asns:
         print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。")
