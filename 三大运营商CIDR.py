@@ -43,15 +43,12 @@ def get_asns(isp_name):
         country_div = row.find('div', class_='flag')
         if asn_link and 'AS' in asn_link.text and country_div:
             country_title = country_div.get('title', '')
-            td_elements = row.find_all('td')
-            if len(td_elements) >= 3:
-                description = td_elements[2].text.lower()
-                if country_title == 'China' or 'china' in description:
-                    asns.append(asn_link.text)
-                    print(f"找到{isp_name} ASN: {asn_link.text}, 描述: {description}")
+            if country_title == 'China':
+                asns.append(asn_link.text)
+                print(f"找到{isp_name} ASN: {asn_link.text}")
 
     if not asns:
-        print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。请检查搜索结果页面结构是否发生变化。")
+        print(f"警告：未能为ISP {isp_name}找到任何中国大陆的ASN。")
     else:
         print(f"为 {isp_name} 找到 {len(asns)} 个ASN")
 
