@@ -30,11 +30,13 @@ def get_unique_asns(isp_keywords):
         soup = BeautifulSoup(page_content, 'html.parser')
         print(f"从关键词 '{keyword}' 获取ASN...")
         for row in soup.find_all('tr'):
-            if 'ASN' in row.text and 'China' in row.text:
-                asn = row.find('a').text.strip()
-                name = row.find_all('td')[2].text.strip()  # 获取名称
-                asns[asn] = name  # 存储ASN和名称
-                print(f"发现 {asn}，名称 {name}")
+            if 'ASN' in row.text:
+                # 检查是否有标记为中国的图片
+                if row.find('img') and row.find('img')['title'] == "China":
+                    asn = row.find('a').text.strip()
+                    name = row.find_all('td')[2].text.strip()  # 获取名称
+                    asns[asn] = name  # 存储ASN和名称
+                    print(f"发现 {asn}，名称 {name}")
     return asns
 
 def get_cidr(asn):
@@ -44,7 +46,7 @@ def get_cidr(asn):
     for suffix in ["#_prefixes", "#_prefixes6"]:
         asn_page = requests.get(f"https://bgp.he.net/{asn}{suffix}").content
         soup = BeautifulSoup(asn_page, 'html.parser')
-        print(f"获取 {asn} 的CIDR信息...")
+        print(f"获取ASN {asn} 的CIDR信息...")
         for row in soup.find_all('tr'):
             cidr_link = row.find('a')
             if cidr_link and 'net' in cidr_link['href']:
@@ -56,7 +58,7 @@ def get_cidr(asn):
     
     # 打印发现的CIDR数量
     total_cidrs = len(cidrs_v4) + len(cidrs_v6)
-    print(f"从 {asn} 发现 {total_cidrs} 个 CIDR (IPv4: {len(cidrs_v4)}, IPv6: {len(cidrs_v6)})")
+    print(f"ASN {asn} 发现 {total_cidrs} 个 CIDR (IPv4: {len(cidrs_v4)}, IPv6: {len(cidrs_v6)})")
     
     return cidrs_v4, cidrs_v6
 
