@@ -4,6 +4,7 @@ import os
 import shutil
 import ipaddress
 import re
+import tempfile
 
 # 函数：合并CIDR
 def merge_cidrs(cidrs):
@@ -62,11 +63,9 @@ def get_asns(isp_name):
     return asns
 
 # 从指定的ASN页面获取CIDR（支持缓存）
-def get_cidrs(asn, cache_dir):
+def get_cidrs(asn, cache_dir, temp_ipv4_file, temp_ipv6_file):
     cache_file_v4 = os.path.join(cache_dir, f"{asn}_prefixes.html")
     cache_file_v6 = os.path.join(cache_dir, f"{asn}_prefixes6.html")
-    
-    cidrs = []
     
     for cache_file, url_suffix in [(cache_file_v4, "#_prefixes"), (cache_file_v6, "#_prefixes6")]:
         if not os.path.exists(cache_file):
@@ -83,19 +82,22 @@ def get_cidrs(asn, cache_dir):
 
         soup = BeautifulSoup(content, "html.parser")
         
+        cidr_count = 0
         for row in soup.find_all('tr'):
             cidr_link = row.find('a', href=lambda href: href and href.startswith('/net/'))
             if cidr_link:
                 cidr_text = cidr_link.text
                 if re.match(r'^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$|^[0-9a-fA-F:]+(\/\d{1,3})?$', cidr_text):
-                    cidrs.append(cidr_text)
+                    if ':' in cidr_text:  # IPv6
+                        temp_ipv6_file.write(f"{cidr_text}\n")
+                    else:  # IPv4
+                        temp_ipv4_file.write(f"{cidr_text}\n")
+                    cidr_count += 1
 
-    if not cidrs:
+    if cidr_count == 0:
         print(f"警告：未能从ASN {asn}获取任何CIDR。请检查网页结构是否发生变化。")
     else:
-        print(f"从ASN {asn}获取了 {len(cidrs)} 个CIDR。")
-
-    return cidrs
+        print(f"从ASN {asn}获取了 {cidr_count} 个CIDR。")
 
 # 清空缓存目录
 def clear_cache(cache_dir):
@@ -150,39 +152,36 @@ def main(isps, cache_dir):
         ipv4_file_path = f"{isp_name}_v4.txt"
         ipv6_file_path = f"{isp_name}_v6.txt"
         
-        ipv4_cidrs = []
-        ipv6_cidrs = []
-        
-        # 对每个ISP名称进行搜索
-        for search_term in isp.split('[')[1].split(']')[0].split(','):
-            search_term = search_term.strip()
-            print(f"搜索ISP名称: {search_term}")
-            asns = get_asns(search_term)
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_ipv4_file, \
+             tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_ipv6_file:
             
-            # 去除重复的ASN
-            asns = list(set(asns))
-            print(f"总共找到 {len(asns)} 个唯一ASN")
-
-            for asn in asns:
-                print(f"ASN: {asn}")
-                cidrs = get_cidrs(asn, cache_dir)
+            # 对每个ISP名称进行搜索
+            for search_term in isp.split('[')[1].split(']')[0].split(','):
+                search_term = search_term.strip()
+                print(f"搜索ISP名称: {search_term}")
+                asns = get_asns(search_term)
                 
-                for cidr in cidrs:
-                    if ':' in cidr:  # IPv6
-                        ipv6_cidrs.append(cidr)
-                    else:  # IPv4
-                        ipv4_cidrs.append(cidr)
-                
-                print(f"从ASN {asn}获取了 {len(cidrs)} 个CIDR。")
-        
-        # 排序和合并CIDR
-        print(f"开始排序和合并 {isp_name} IPv4 CIDR，原始数量: {len(ipv4_cidrs)}")
-        ipv4_cidrs, _ = sort_and_merge_cidrs(ipv4_cidrs)
-        print(f"{isp_name} IPv4 CIDR排序和合并完成，合并后数量: {len(ipv4_cidrs)}")
+                # 去除重复的ASN
+                asns = list(set(asns))
+                print(f"总共找到 {len(asns)} 个唯一ASN")
 
-        print(f"开始排序和合并 {isp_name} IPv6 CIDR，原始数量: {len(ipv6_cidrs)}")
-        _, ipv6_cidrs = sort_and_merge_cidrs(ipv6_cidrs)
-        print(f"{isp_name} IPv6 CIDR排序和合并完成，合并后数量: {len(ipv6_cidrs)}")
+                for asn in asns:
+                    print(f"ASN: {asn}")
+                    get_cidrs(asn, cache_dir, temp_ipv4_file, temp_ipv6_file)
+
+            # 处理IPv4 CIDR
+            temp_ipv4_file.seek(0)
+            ipv4_cidrs = temp_ipv4_file.readlines()
+            print(f"开始排序和合并 {isp_name} IPv4 CIDR，原始数量: {len(ipv4_cidrs)}")
+            ipv4_cidrs = sort_and_merge_cidrs([cidr.strip() for cidr in ipv4_cidrs])
+            print(f"{isp_name} IPv4 CIDR排序和合并完成，合并后数量: {len(ipv4_cidrs)}")
+
+            # 处理IPv6 CIDR
+            temp_ipv6_file.seek(0)
+            ipv6_cidrs = temp_ipv6_file.readlines()
+            print(f"开始排序和合并 {isp_name} IPv6 CIDR，原始数量: {len(ipv6_cidrs)}")
+            ipv6_cidrs = sort_and_merge_cidrs([cidr.strip() for cidr in ipv6_cidrs])
+            print(f"{isp_name} IPv6 CIDR排序和合并完成，合并后数量: {len(ipv6_cidrs)}")
 
         # 保存到文件
         with open(ipv4_file_path, mode='w', encoding='utf-8') as ipv4_file:
@@ -197,6 +196,10 @@ def main(isps, cache_dir):
         print(f"IPv4 CIDR数量: {len(ipv4_cidrs)}")
         print(f"IPv6 CIDR数量: {len(ipv6_cidrs)}")
         print(f"文件保存路径：\nIPv4: {os.path.abspath(ipv4_file_path)}\nIPv6: {os.path.abspath(ipv6_file_path)}")
+
+        # 删除临时文件
+        os.unlink(temp_ipv4_file.name)
+        os.unlink(temp_ipv6_file.name)
 
     clear_cache(cache_dir)
 
