@@ -97,8 +97,8 @@ def main(isps, cache_dir):
     for isp in isps:
         print(f"正在搜索ISP: {isp}")
         isp_name = isp.split('[')[0].strip()
-        ipv4_file_path = f"{isp_name}_v4.txt"
-        ipv6_file_path = f"{isp_name}_v6.txt"
+        ipv4_file_path = f"{isp_name.replace(' ', '_')}_v4.txt"
+        ipv6_file_path = f"{isp_name.replace(' ', '_')}_v6.txt"
         
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_ipv4_file, \
              tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_ipv6_file:
