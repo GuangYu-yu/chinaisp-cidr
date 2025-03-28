@@ -2,7 +2,7 @@ name: 更新运营商 ASN
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # 每周日 UTC 0:00 执行
+    - cron: "0 4 * * *"  # 每天4点运行一次
   workflow_dispatch:      # 允许手动触发
 
 jobs:
@@ -12,9 +12,7 @@ jobs:
     steps:
     - name: 检出代码
       uses: actions/checkout@v3
-      with:
-        fetch-depth: 0  # 获取完整历史记录
-        
+      
     - name: 设置 Python
       uses: actions/setup-python@v4
       with:
@@ -28,19 +26,17 @@ jobs:
     - name: 运行更新脚本
       run: python get_asn.py
         
-    - name: 拉取并合并
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git pull origin main --rebase
-        
-    - name: 提交更改
+    - name: 检查并提交更改
       run: |
         git add *_asn.yaml
-        git commit -m "自动更新运营商 ASN 列表" || exit 0
+        if git diff --cached --quiet; then
+          echo "没有需要提交的更改"
+          exit 0
+        fi
         
-    - name: 推送更改
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: main
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -m "更新运营商 ASN 列表 $(date '+%Y/%m/%d %H:%M:%S')" || echo "没有需要提交的更改"
+        git pull --rebase
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        git push || echo "没有需要推送的更改"
