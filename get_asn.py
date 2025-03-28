@@ -53,16 +53,27 @@ def get_asn_ipwhois(ip):
         pass
     return None
 
+def get_asn_ipinfo(ip):
+    try:
+        response = requests.get(f'https://ipinfo.io/{ip}/json', timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if 'org' in data:
+                return data['org'].split()[0][2:]  # 提取AS号码
+    except:
+        pass
+    return None
+
 def get_asn_for_ip(ip):
     # 随机打乱API顺序
-    api_functions = [get_asn_bgpview, get_asn_ipapi, get_asn_ipwhois]
+    api_functions = [get_asn_bgpview, get_asn_ipapi, get_asn_ipwhois, get_asn_ipinfo]
     random.shuffle(api_functions)
     
     for api_func in api_functions:
         asn = api_func(ip)
         if asn:
             return asn
-        time.sleep(random.uniform(0.5, 1.5))  # 随机延迟
+        time.sleep(random.uniform(1, 2))  # 随机延迟
     return None
 
 def get_cidrs_from_url(url):
@@ -76,16 +87,16 @@ def process_operator(name, urls):
     asn_set = set()
     ip_cache = {}
     
-    # 准备三个API函数
-    api_functions = [get_asn_bgpview, get_asn_ipapi, get_asn_ipwhois]
+    # 准备API函数
+    api_functions = [get_asn_bgpview, get_asn_ipapi, get_asn_ipwhois, get_asn_ipinfo]
     
     for url in urls:
         print(f'Processing {url}')
         cidrs = get_cidrs_from_url(url)
         total = len(cidrs)
         
-        # 平均分配CIDR到三个API
-        chunk_size = (total + 2) // 3  # 向上取整
+        # 平均分配CIDR到API
+        chunk_size = (total + len(api_functions) - 1) // len(api_functions)
         
         for i, cidr in enumerate(cidrs):
             try:
