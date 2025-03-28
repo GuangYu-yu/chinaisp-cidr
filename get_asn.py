@@ -96,7 +96,7 @@ def process_operator(name, urls):
         'payload': [f'SRC-IP-ASN,{asn}' for asn in sorted(asn_set)]
     }
 
-    output_file = f'c:\\Users\\Air\\Desktop\\pool\\{name}_asn.yaml'
+    output_file = f'{name}_asn.yaml'
     with open(output_file, 'w', encoding='utf-8') as f:
         yaml.dump(yaml_data, f, allow_unicode=True, sort_keys=False)
     print(f'Saved to {output_file}')
