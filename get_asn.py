@@ -74,20 +74,34 @@ def get_cidrs_from_url(url):
 
 def process_operator(name, urls):
     asn_set = set()
+    ip_cache = {}
+    
+    # 准备三个API函数
+    api_functions = [get_asn_bgpview, get_asn_ipapi, get_asn_ipwhois]
     
     for url in urls:
         print(f'Processing {url}')
         cidrs = get_cidrs_from_url(url)
         total = len(cidrs)
         
-        for i, cidr in enumerate(cidrs, 1):
+        # 平均分配CIDR到三个API
+        chunk_size = (total + 2) // 3  # 向上取整
+        
+        for i, cidr in enumerate(cidrs):
             try:
                 network = ipaddress.ip_network(cidr)
-                first_ip = next(network.hosts())
-                asn = get_asn_for_ip(str(first_ip))
+                first_ip = str(next(network.hosts()))
+                
+                # 根据索引选择API
+                api_index = i // chunk_size
+                if api_index >= len(api_functions):
+                    api_index = len(api_functions) - 1
+                    
+                asn = api_functions[api_index](first_ip)
                 if asn:
                     asn_set.add(asn)
-                print(f'Progress: {i}/{total} - Found ASN: {asn}')
+                print(f'Progress: {i+1}/{total} - API {api_index+1} - Found ASN: {asn}')
+                
             except Exception as e:
                 print(f'Error processing {cidr}: {str(e)}')
                 continue
