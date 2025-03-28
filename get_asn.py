@@ -123,7 +123,7 @@ def process_operator(name, urls):
 
     output_file = f'{name}_asn.yaml'
     with open(output_file, 'w', encoding='utf-8') as f:
-        yaml.dump(yaml_data, f, allow_unicode=True, sort_keys=False)
+        yaml.dump(yaml_data, f, allow_unicode=True, sort_keys=False, indent=2)
     print(f'Saved to {output_file}')
 
 def main():
