@@ -6,17 +6,17 @@ import random
 from collections import defaultdict
 
 OPERATOR_URLS = {
-    'mobile': [
-        'https://gaoyifan.github.io/china-operator-ip/cmcc.txt',
-        'https://gaoyifan.github.io/china-operator-ip/cmcc6.txt'
+    'Mobile': [
+        'https://raw.githubusercontent.com/GuangYu-yu/chinaisp-cidr/refs/heads/main/China_Mobile_v6.txt',
+        'https://raw.githubusercontent.com/GuangYu-yu/chinaisp-cidr/refs/heads/main/China_Mobile_v6.txt'
     ],
-    'unicom': [
-        'https://gaoyifan.github.io/china-operator-ip/unicom.txt',
-        'https://gaoyifan.github.io/china-operator-ip/unicom6.txt'
+    'Unicom': [
+        'https://raw.githubusercontent.com/GuangYu-yu/chinaisp-cidr/refs/heads/main/China_Unicom_v4.txt',
+        'https://raw.githubusercontent.com/GuangYu-yu/chinaisp-cidr/refs/heads/main/China_Unicom_v6.txt'
     ],
-    'telecom': [
-        'https://gaoyifan.github.io/china-operator-ip/chinanet.txt',
-        'https://gaoyifan.github.io/china-operator-ip/chinanet6.txt'
+    'Telecom': [
+        'https://raw.githubusercontent.com/GuangYu-yu/chinaisp-cidr/refs/heads/main/China_Telecom_v6.txt',
+        'https://raw.githubusercontent.com/GuangYu-yu/chinaisp-cidr/refs/heads/main/China_Telecom_v6.txt'
     ]
 }
 
