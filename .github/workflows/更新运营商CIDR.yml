@@ -1,7 +1,7 @@
 name: 更新运营商CIDR
 on:
   schedule:
-    - cron: "0 4 * * *"  # 每天4点运行一次
+    - cron: "0 */2 * * *"  # 每2小时运行一次
   workflow_dispatch:  # 允许手动触发
 jobs:
   download-and-commit:
