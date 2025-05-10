@@ -5,8 +5,8 @@ import os
 
 isps_to_search = {
     "China Mobile": ["mobile", "tietong"],
-    "China Unicom": ["cnc", "cncgroup", "unicom"],
-    "China Telecom": ["chinatelecom", "telecom", "chinanet", "inter+exchange", "ct"]
+    "China Unicom": ["cnc", "cncgroup", "unicom", "netcom"],
+    "China Telecom": ["chinatelecom", "telecom", "chinanet", "ct"]
 }
 
 def clear_cache():
