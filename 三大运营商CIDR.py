@@ -95,9 +95,9 @@ def save_asn_to_yaml(isp, asn_set):
     # 获取对应的运营商简称
     operator_name = isp_name_mapping.get(isp, isp.replace(' ', '_'))
     
-    # 创建YAML数据
+    # 创建YAML数据，去掉ASN前面的"AS"前缀
     yaml_data = {
-        'payload': [f'SRC-IP-ASN,{asn}' for asn in sorted(asn_set)]
+        'payload': [f'SRC-IP-ASN,{asn.replace("AS", "")}' for asn in sorted(asn_set)]
     }
     
     # 保存到文件
