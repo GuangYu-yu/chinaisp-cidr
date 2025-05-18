@@ -1,8 +1,8 @@
 name: 更新运营商 ASN
 
 on:
-  schedule:
-    - cron: "0 4 * * *"  # 每天4点运行一次
+#  schedule:
+#    - cron: "0 4 * * *"  # 每天4点运行一次
   workflow_dispatch:      # 允许手动触发
 
 jobs:
