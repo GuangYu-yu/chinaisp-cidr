@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import ipaddress
 import os
+import yaml
 
 isps_to_search = {
     "China Mobile": ["mobile", "tietong"],
@@ -78,6 +79,17 @@ def merge_and_sort_cidrs(cidrs):
     print(f"CIDR合并完成，合并后数量: {len(merged)}")
     return sorted(str(cidr) for cidr in merged)
 
+def save_asn_yaml(isp_name, asns):
+    """将ASN保存为YAML格式"""
+    yaml_data = {
+        'payload': [f'SRC-IP-ASN,{asn}' for asn in sorted(asns.keys())]
+    }
+    
+    output_file = f"{isp_name.replace(' ', '_')}_asn.yaml"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        yaml.dump(yaml_data, f, allow_unicode=True, sort_keys=False, indent=2, default_flow_style=False)
+    print(f"ASN数据已保存到 {output_file}")
+
 def main():
     clear_cache()
 
@@ -86,6 +98,9 @@ def main():
         unique_asns = get_unique_asns(keywords)
         all_cidrs_v4 = []
         all_cidrs_v6 = []
+        
+        # 保存ASN到YAML文件
+        save_asn_yaml(isp, unique_asns)
         
         for asn, name in unique_asns.items():
             cidrs_v4, cidrs_v6 = get_cidr(asn)
