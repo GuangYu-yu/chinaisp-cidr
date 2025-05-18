@@ -2,11 +2,19 @@ import requests
 from bs4 import BeautifulSoup
 import ipaddress
 import os
+import yaml
 
 isps_to_search = {
     "China Mobile": ["mobile", "tietong"],
     "China Unicom": ["cnc", "cncgroup", "unicom", "netcom"],
     "China Telecom": ["chinatelecom", "telecom", "chinanet", "ct"]
+}
+
+# 运营商名称映射
+isp_name_mapping = {
+    "China Mobile": "Mobile",
+    "China Unicom": "Unicom",
+    "China Telecom": "Telecom"
 }
 
 def clear_cache():
@@ -39,7 +47,7 @@ def get_unique_asns(isp_keywords):
                     print(f"发现 {asn}，名称 {name}")
     return asns
 
-def get_cidr(asn):
+def get_cidr(asn, asn_set):
     cidrs_v4 = []
     cidrs_v6 = []
     
@@ -64,6 +72,11 @@ def get_cidr(asn):
     total_cidrs = len(cidrs_v4) + len(cidrs_v6)
     print(f"ASN {asn} 发现 {total_cidrs} 个 CIDR (IPv4: {len(cidrs_v4)}, IPv6: {len(cidrs_v6)})")
     
+    # 如果找到了CIDR，将ASN添加到集合中
+    if total_cidrs > 0:
+        asn_set.add(asn)
+        print(f"ASN {asn} 已添加到ASN集合中")
+    
     return cidrs_v4, cidrs_v6
 
 def merge_and_sort_cidrs(cidrs):
@@ -78,6 +91,21 @@ def merge_and_sort_cidrs(cidrs):
     print(f"CIDR合并完成，合并后数量: {len(merged)}")
     return sorted(str(cidr) for cidr in merged)
 
+def save_asn_to_yaml(isp, asn_set):
+    # 获取对应的运营商简称
+    operator_name = isp_name_mapping.get(isp, isp.replace(' ', '_'))
+    
+    # 创建YAML数据
+    yaml_data = {
+        'payload': [f'SRC-IP-ASN,{asn}' for asn in sorted(asn_set)]
+    }
+    
+    # 保存到文件
+    output_file = f'{operator_name}_asn.yaml'
+    with open(output_file, 'w', encoding='utf-8') as f:
+        yaml.dump(yaml_data, f, allow_unicode=True, sort_keys=False, indent=2, default_flow_style=False)
+    print(f'ASN信息已保存到 {output_file}')
+
 def main():
     clear_cache()
 
@@ -86,9 +114,10 @@ def main():
         unique_asns = get_unique_asns(keywords)
         all_cidrs_v4 = []
         all_cidrs_v6 = []
+        asn_set = set()  # 用于存储有效的ASN
         
         for asn, name in unique_asns.items():
-            cidrs_v4, cidrs_v6 = get_cidr(asn)
+            cidrs_v4, cidrs_v6 = get_cidr(asn, asn_set)
             all_cidrs_v4.extend(cidrs_v4)
             all_cidrs_v6.extend(cidrs_v6)
         
@@ -103,6 +132,9 @@ def main():
         with open(f"{isp.replace(' ', '_')}_v6.txt", 'w') as f_v6:
             for cidr in merged_cidrs_v6:
                 f_v6.write(cidr + '\n')
+        
+        # 保存ASN到YAML文件
+        save_asn_to_yaml(isp, asn_set)
 
 if __name__ == "__main__":
     main()
