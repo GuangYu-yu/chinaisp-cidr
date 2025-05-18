@@ -1,7 +1,7 @@
 name: 更新运营商CIDR
 on:
   schedule:
-    - cron: "0 */2 * * *"  # 每2小时运行一次
+    - cron: "0 */3 * * *"  # 每3小时运行一次
   workflow_dispatch:  # 允许手动触发
 jobs:
   download-and-commit:
@@ -18,7 +18,7 @@ jobs:
       # 安装所需库
       - name: 安装所需库
         run: |
-          pip install requests beautifulsoup4  # 安装 requests 和 BeautifulSoup
+          pip install requests beautifulsoup4 pyyaml
       # 下载并处理文件
       - name: 下载并处理文件
         run: python 三大运营商CIDR.py  # 调用你的 Python 脚本
