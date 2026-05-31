@@ -1,0 +1,280 @@
+allow-lan: true
+ipv6: true
+
+geo-auto-update: true
+geo-update-interval: 8
+
+dns:
+  enable: true
+  listen: 0.0.0.0:53
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+
+geox-url:
+  geoip: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  geosite: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  mmdb: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
+  asn: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/GeoLite2-ASN.mmdb"
+
+profile:
+  store-selected: true
+
+tcp-concurrent: true
+
+proxies:
+  - name: "移动v4"
+    type: direct
+    ip-version: ipv4
+    interface-name: eth2
+    routing-mark: 1
+    udp: true
+    tfo: true
+    mptcp: true
+
+    smux:
+      enabled: true
+      protocol: h2mux
+      only-tcp: false
+      brutal-opts:
+        enabled: true
+
+  - name: "联通v4"
+    type: direct
+    ip-version: ipv4
+    interface-name: eth1
+    routing-mark: 2
+    udp: true
+    tfo: true
+    mptcp: true
+    smux:
+      enabled: true
+      protocol: h2mux
+      only-tcp: false
+      brutal-opts:
+        enabled: true
+
+  - name: "电信v4"
+    type: direct
+    ip-version: ipv4
+    interface-name: eth3
+    routing-mark: 3
+    udp: true
+    tfo: true
+    mptcp: true
+    smux:
+      enabled: true
+      protocol: h2mux
+      only-tcp: false
+      brutal-opts:
+        enabled: true
+
+  - name: "移动v6"
+    type: direct
+    ip-version: ipv6
+    interface-name: eth2
+    routing-mark: 4
+    udp: true
+    tfo: true
+    mptcp: true
+    smux:
+      enabled: true
+      protocol: h2mux
+      only-tcp: false
+      brutal-opts:
+        enabled: true
+
+  - name: "联通v6"
+    type: direct
+    ip-version: ipv6
+    interface-name: eth1
+    routing-mark: 5
+    udp: true
+    tfo: true
+    mptcp: true
+    smux:
+      enabled: true
+      protocol: h2mux
+      only-tcp: false
+      brutal-opts:
+        enabled: true
+
+  - name: "电信v6"
+    type: direct
+    ip-version: ipv6
+    interface-name: eth3
+    routing-mark: 6
+    udp: true
+    tfo: true
+    mptcp: true
+    smux:
+      enabled: true
+      protocol: h2mux
+      only-tcp: false
+      brutal-opts:
+        enabled: true
+
+proxy-groups:
+  - name: "移动"
+    type: select
+    proxies:
+      - 移动v4
+      - 移动v6
+
+  - name: "联通"
+    type: select
+    proxies:
+      - 联通v4
+      - 联通v6
+
+  - name: "电信"
+    type: select
+    proxies:
+      - 电信v4
+      - 电信v6
+
+  - name: "国内"
+    type: select
+    proxies:
+      - 移动
+      - 联通
+      - 电信
+      - 国内轮询
+      - 国内粘性
+
+  - name: "国内轮询"
+    type: load-balance
+    strategy: round-robin
+    proxies:
+      - 移动
+      - 联通
+      - 电信
+    url: 'https://www.qq.com/favicon.ico'
+    interval: 10
+
+  - name: "国内粘性"
+    type: load-balance
+    strategy: consistent-hashing
+    proxies:
+      - 移动
+      - 联通
+      - 电信
+    url: 'https://www.qq.com/favicon.ico'
+    interval: 10
+
+rule-providers:
+  中国移动v4:
+    type: http
+    url: "https://gaoyifan.github.io/china-operator-ip/cmcc.txt"
+    interval: 3600
+    behavior: ipcidr
+    format: text
+    path: ./ruleset/cmcc.yaml
+  中国移动v6:
+    type: http
+    url: "https://gaoyifan.github.io/china-operator-ip/cmcc6.txt"
+    interval: 3600
+    behavior: ipcidr
+    format: text
+    path: ./ruleset/cmcc6.yaml
+  中国联通v4:
+    type: http
+    url: "https://gaoyifan.github.io/china-operator-ip/unicom.txt"
+    interval: 3600
+    behavior: ipcidr
+    format: text
+    path: ./ruleset/unicom.yaml
+  中国联通v6:
+    type: http
+    url: "https://gaoyifan.github.io/china-operator-ip/unicom6.txt"
+    interval: 3600
+    behavior: ipcidr
+    format: text
+    path: ./ruleset/unicom6.yaml
+  中国电信v4:
+    type: http
+    url: "https://gaoyifan.github.io/china-operator-ip/chinanet.txt"
+    interval: 3600
+    behavior: ipcidr
+    format: text
+    path: ./ruleset/chinanet.yaml
+  中国电信v6:
+    type: http
+    url: "https://gaoyifan.github.io/china-operator-ip/chinanet6.txt"
+    interval: 3600
+    behavior: ipcidr
+    format: text
+    path: ./ruleset/chinanet6.yaml
+
+  游戏下载:
+    type: http
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Game/GameDownloadCN/GameDownloadCN.yaml"
+    interval: 86400
+    behavior: classical
+    format: yaml
+    path: ./ruleset/GameDownloadCN.yaml
+    
+  下载:
+    type: http
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Download/Download.yaml"
+    interval: 86400
+    behavior: classical
+    format: yaml
+    path: ./ruleset/Download.yaml
+
+  移动ASN:
+    type: http
+    url: "https://cdn.jsdelivr.net/gh/GuangYu-yu/chinaisp-cidr@main/mobile_asn.yaml"
+    interval: 86400
+    behavior: classical
+    format: yaml
+    path: ./ruleset/mobile_asn.yaml
+
+  联通ASN:
+    type: http
+    url: "https://cdn.jsdelivr.net/gh/GuangYu-yu/chinaisp-cidr@main/unicom_asn.yaml"
+    interval: 86400
+    behavior: classical
+    format: yaml
+    path: ./ruleset/unicom_asn.yaml
+
+  电信ASN:
+    type: http
+    url: "https://cdn.jsdelivr.net/gh/GuangYu-yu/chinaisp-cidr@main/telecom_asn.yaml"
+    interval: 86400
+    behavior: classical
+    format: yaml
+    path: ./ruleset/telecom_asn.yaml
+
+rules:
+  - DOMAIN-SUFFIX,jsdelivr.net,DIRECT
+  - DOMAIN-SUFFIX,github.io,DIRECT
+
+  # 应用层协议和服务
+  - RULE-SET,下载,国内轮询
+  - RULE-SET,游戏下载,国内轮询
+
+  # 网络层协议
+  - NETWORK,UDP,国内粘性
+  - NETWORK,TCP,国内轮询
+
+  # IP分流
+  - RULE-SET,中国移动v4,移动v4
+  - RULE-SET,中国移动v6,移动v6
+  - RULE-SET,中国联通v4,联通v4
+  - RULE-SET,中国联通v6,联通v6
+  - RULE-SET,中国电信v4,电信v4
+  - RULE-SET,中国电信v6,电信v6
+
+  # ASN分流
+  - RULE-SET,移动ASN,移动
+  - RULE-SET,联通ASN,联通
+  - RULE-SET,电信ASN,电信
+
+  # 直连
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,国内
+  - MATCH,国内轮询
