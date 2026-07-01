@@ -1,0 +1,31 @@
+name: 更新 ChinaIPs_IP.txt
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'  # 每12小时执行一次
+  workflow_dispatch:        # 支持手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 下载 ChinaIPs_IP.txt
+        run: |
+          curl -sSL "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/ChinaIPs/ChinaIPs_IP.txt" -o ChinaIPs_IP_raw.txt
+
+      - name: 过滤并保存内容
+        run: |
+          grep ':' ChinaIPs_IP_raw.txt | grep -v '^#' > ChinaIPs_IP.txt
+          rm ChinaIPs_IP_raw.txt
+
+      - name: 提交更改
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ChinaIPs_IP.txt
+          git diff --cached --quiet || git commit -m "更新 ChinaIPs_IP.txt"
+          git push
