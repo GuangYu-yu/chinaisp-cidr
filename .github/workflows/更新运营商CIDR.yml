@@ -1,0 +1,42 @@
+name: 更新运营商CIDR
+on:
+  schedule:
+    - cron: "0 */12 * * *"  # 每12小时运行一次
+  workflow_dispatch:  # 允许手动触发
+jobs:
+  download-and-commit:
+    runs-on: ubuntu-latest  # 在最新的 Ubuntu 环境上运行
+    steps:
+      # 检出仓库代码
+      - name: 检出仓库代码
+        uses: actions/checkout@v3
+      # 设置 Python 环境
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'  # 使用最新的 Python 3 版本
+      # 安装所需库
+      - name: 安装所需库
+        run: |
+          pip install requests beautifulsoup4 pyyaml
+      # 下载并处理文件
+      - name: 下载并处理文件
+        run: python 三大运营商CIDR.py  # 调用你的 Python 脚本
+      # 检查是否有更改
+      - name: 检查是否有更改
+        run: |
+          git add .  # 将所有更改添加到暂存区
+          if git diff --cached --quiet; then
+            echo "没有需要提交的更改"
+            exit 0
+          fi
+      # 提交并推送更改
+      - name: 提交并推送更改
+        if: success()  # 仅在上一步成功时运行
+        run: |
+          git config --local user.email "action@github.com"  # 配置 Git 用户邮箱
+          git config --local user.name "GitHub Action"  # 配置 Git 用户名
+          git commit -m "Downloaded and processed China ISPs CIDR on $(date '+%Y/%m/%d %H:%M:%S')" || echo "没有需要提交的更改，跳过提交。"  # 提交更改
+          git pull --rebase  # 拉取远程仓库最新的更改并合并
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git  # 设置远程仓库 URL
+          git push || echo "没有需要推送的更改，跳过推送。"  # 推送更改到远程仓库
